@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joy Sisterlocks - Invoice Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #D6456F 0%, #C59B9B 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            height: fit-content;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar h3 {
+            color: #D6456F;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #D6456F;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: #FDF8F9;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #D6456F;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #5A4A52;
+            margin-top: 4px;
+        }
+        
+        .client-list {
+            list-style: none;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .client-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .client-list li:hover {
+            background: #FDF8F9;
+            padding-left: 8px;
+        }
+        
+        .client-name {
+            font-weight: 600;
+            color: #4A2B42;
+            font-size: 13px;
+        }
+        
+        .client-phone {
+            font-size: 11px;
+            color: #5A4A52;
+        }
+        
+        .sidebar-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #D6456F;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        
+        .sidebar-btn:hover {
+            background: #b83b5e;
+        }
+        
+        /* Client Summary Card */
+        .client-summary {
+            background: #FDF8F9;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .client-summary.show {
+            display: block;
+        }
+        
+        .summary-title {
+            font-weight: bold;
+            color: #4A2B42;
+            margin-bottom: 10px;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 5px 0;
+        }
+        
+        .vip-badge {
+            background: #FFD70020;
+            color: #B8860B;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        /* Main Form Styles */
+        .form-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .header h1 {
+            color: #D6456F;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #5A4A52;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4A2B42;
+            font-size: 14px;
+        }
+        
+        .label-required::after {
+            content: " *";
+            color: #D6456F;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #D6456F;
+        }
+        
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .row .form-group {
+            flex: 1;
+        }
+        
+        .service-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #FDF8F9;
+            border-radius: 12px;
+        }
+        
+        .service-row .form-group {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        
+        .service-row .price-group {
+            width: 100%;
+        }
+        
+        .other-service-field {
+            margin-top: 5px;
+        }
+        
+        .other-service-field input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .service-row .remove-btn {
+            background: #D6456F;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            width: auto;
+            align-self: flex-start;
+            margin-top: 5px;
+        }
+        
+        .service-row .remove-btn:hover {
+            background: #b83b5e;
+        }
+        
+        .add-service-btn {
+            background: #4A2B42;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 5px;
+            margin-bottom: 20px;
+            width: auto;
+        }
+        
+        .add-service-btn:hover {
+            background: #3a1f33;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #D6456F 0%, #C59B9B 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        .search-result {
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        
+        .search-result a {
+            color: #D6456F;
+            text-decoration: none;
+        }
+        
+        .service-info {
+            font-size: 12px;
+            color: #5A4A52;
+            margin-top: 5px;
+        }
+        
+        .live-total {
+            background: #FDF8F9;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .live-total span {
+            font-weight: bold;
+            color: #D6456F;
+            font-size: 18px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                order: 2;
+            }
+            .form-container {
+                order: 1;
+            }
+            .row {
+                flex-direction: column;
+                gap: 0;
+            }
+            .service-row {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>📊 Quick Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.total_clients if stats else 0 }}</div>
+                    <div class="stat-label">Total Clients</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.vip_count if stats else 0 }}</div>
+                    <div class="stat-label">VIP Clients</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.new_this_month if stats else 0 }}</div>
+                    <div class="stat-label">New This Month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">
+                        {% if stats and stats.gross_revenue %}
+                            KES {{ "{:,.0f}".format(stats.gross_revenue) }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+            </div>
+            
+            <h3>📝 Recent Clients</h3>
+            {% if recent_clients %}
+                <ul class="client-list">
+                {% for client in recent_clients %}
+                    <li onclick='fillClientForm(
+                        {{ client.client_name|tojson }},
+                        {{ client.client_phone|tojson }},
+                        {{ (client.client_email or "")|tojson }}
+                    )'>
+                        <div class="client-name">{{ client.client_name }}</div>
+                        <div class="client-phone">{{ client.client_phone }}</div>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p style="font-size: 12px; color: #5A4A52;">No clients yet. Create your first invoice!</p>
+            {% endif %}
+            
+            <a href="/clients" class="sidebar-btn">🔍 Manage All Clients</a>
+            
+            <!-- Client Summary Card -->
+            <div id="client-summary" class="client-summary">
+                <div class="summary-title">👤 Client Summary</div>
+                <div id="summary-content"></div>
+            </div>
+        </div>
+        
+        <!-- Main Form -->
+        <div class="form-container">
+            <div class="header">
+                <h1>💇🏾‍♀️ Joy Sisterlocks</h1>
+                <p>Professional Sisterlocks & Microlocs Services</p>
+                <p style="font-size: 12px;">📍 Mezzanine Floor, Room 8, Highway Mall, Nairobi</p>
+            </div>
+            
+            <div class="live-total" id="live-total">
+                💰 Total: <span id="total-amount">0</span> KES | 
+                Balance: <span id="balance-amount">0</span> KES
+            </div>
+            
+            <form method="POST" id="invoice-form">
+                <div class="row">
+                    <div class="form-group">
+                        <label class="label-required">Client Name</label>
+                        <input type="text" name="client_name" id="client_name" required placeholder="Full name">
+                    </div>
+                    <div class="form-group">
+                        <label class="label-required">Phone Number</label>
+                        <input type="tel" name="client_phone" id="client_phone" required 
+                               placeholder="0712 345 678"
+                               pattern="^(07|01|\+254)[0-9]{8,9}$"
+                               title="Enter a valid Kenyan phone number (e.g., 0712345678)">
+                        <div class="search-result" id="search-result"></div>
+                    </div>
+                </div>
+                
+                <!-- Services Section -->
+                <div id="services-container">
+                    <div class="service-row" id="service-row-1">
+                        <div class="form-group">
+                            <label class="label-required">Service</label>
+                            <select name="service_name[]" class="service-select" data-row="1" required>
+                                <option value="">Select a service</option>
+                                <option value="Colour">Colour</option>
+                                <option value="Retouch">Retouch</option>
+                                <option value="Installation">Installation</option>
+                                <option value="Other">Other (Specify)</option>
+                            </select>
+                        </div>
+                        <div id="other-field-1" class="other-service-field" style="display: none;">
+                            <input type="text" name="other_service_name_1" placeholder="Enter custom service name">
+                        </div>
+                        <div class="form-group price-group">
+                            <label class="label-required">Price (KES)</label>
+                            <input type="number" name="service_price[]" class="service-price" data-row="1" placeholder="Enter price" min="0" step="100" required>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="removeService(1)">🗑️ Remove</button>
+                    </div>
+                </div>
+                
+                <button type="button" class="add-service-btn" onclick="addService()">+ Add Another Service</button>
+                
+                <div class="row">
+                    <div class="form-group">
+                        <label>Appointment Date</label>
+                        <input type="date" name="appointment_date" id="appointment_date">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select name="payment_method" id="payment_method">
+                            <option value="Cash">Cash</option>
+                            <option value="M-Pesa">M-Pesa</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="form-group">
+                        <label>Amount Paid (KES)</label>
+                        <input type="number" name="amount_paid" id="amount_paid" value="" placeholder="0" min="0" step="100">
+                    </div>
+                    <div class="form-group" id="mpesa-field" style="display: none;">
+                        <label>M-Pesa Transaction Code</label>
+                        <input type="text" name="mpesa_code" placeholder="e.g., SDR8T5Y6Z">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Additional Notes</label>
+                    <textarea name="notes" placeholder="Next appointment, aftercare instructions, etc."></textarea>
+                </div>
+                
+                <button type="submit" id="submit-btn">📄 Generate Invoice PDF</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let serviceCounter = 1;
+        
+        // Service prices mapping for default suggestions
+        const defaultPrices = {
+            'Colour': 4500,
+            'Retouch': 3500,
+            'Installation': 15000
+        };
+        
+        // Restrict appointment date to today or past only
+        const appointmentDateInput = document.getElementById('appointment_date');
+        if (appointmentDateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            appointmentDateInput.setAttribute('max', today);
+        }
+        
+        // Show/hide other service text field
+        function toggleOtherServiceField(selectElement, rowId) {
+            const otherField = document.getElementById(`other-field-${rowId}`);
+            if (selectElement.value === 'Other') {
+                if (otherField) {
+                    otherField.style.display = 'block';
+                    const input = otherField.querySelector('input');
+                    if (input) input.required = true;
+                }
+            } else {
+                if (otherField) {
+                    otherField.style.display = 'none';
+                    const input = otherField.querySelector('input');
+                    if (input) {
+                        input.required = false;
+                        input.value = '';
+                    }
+                }
+            }
+        }
+        
+        // Check if a service is already selected
+        function isServiceDuplicate(selectElement, selectedValue) {
+            if (selectedValue === '' || selectedValue === 'Other') return false;
+            
+            let isDuplicate = false;
+            document.querySelectorAll('.service-select').forEach(otherSelect => {
+                if (otherSelect !== selectElement && otherSelect.value === selectedValue) {
+                    isDuplicate = true;
+                }
+            });
+            return isDuplicate;
+        }
+        
+        // Add new service row with duplicate check and maximum limit
+        function addService() {
+            const currentRows = document.querySelectorAll('.service-row').length;
+            if (currentRows >= 5) {
+                alert('Maximum 5 services per invoice');
+                return;
+            }
+            
+            serviceCounter++;
+            const container = document.getElementById('services-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'service-row';
+            newRow.id = `service-row-${serviceCounter}`;
+            newRow.innerHTML = `
+                <div class="form-group">
+                    <label>Service</label>
+                    <select name="service_name[]" class="service-select" data-row="${serviceCounter}" required>
+                        <option value="">Select a service</option>
+                        <option value="Colour">Colour</option>
+                        <option value="Retouch">Retouch</option>
+                        <option value="Installation">Installation</option>
+                        <option value="Other">Other (Specify)</option>
+                    </select>
+                </div>
+                <div id="other-field-${serviceCounter}" class="other-service-field" style="display: none;">
+                    <input type="text" name="other_service_name_${serviceCounter}" placeholder="Enter custom service name">
+                </div>
+                <div class="form-group price-group">
+                    <label>Price (KES)</label>
+                    <input type="number" name="service_price[]" class="service-price" data-row="${serviceCounter}" placeholder="Enter price" min="0" step="100" required>
+                </div>
+                <button type="button" class="remove-btn" onclick="removeService(${serviceCounter})">🗑️ Remove</button>
+            `;
+            container.appendChild(newRow);
+            updateTotal();
+            
+            // Add event listeners to new row with duplicate check
+            const select = newRow.querySelector('.service-select');
+            const priceInput = newRow.querySelector('.service-price');
+            
+            select.addEventListener('change', function() {
+                const selectedValue = this.value;
+                
+                if (isServiceDuplicate(this, selectedValue)) {
+                    alert(`Service "${selectedValue}" is already added. Please remove it first or choose a different service.`);
+                    this.value = '';
+                    priceInput.value = '';
+                    updateTotal();
+                    return;
+                }
+                
+                autoFillPrice(this, priceInput);
+                toggleOtherServiceField(this, serviceCounter);
+                updateTotal();
+            });
+            
+            priceInput.addEventListener('input', updateTotal);
+        }
+        
+        // Remove service row with confirmation
+        function removeService(rowId) {
+            if (confirm('Are you sure you want to remove this service?')) {
+                const row = document.getElementById(`service-row-${rowId}`);
+                if (row) {
+                    row.remove();
+                    updateTotal();
+                }
+            }
+        }
+        
+        // Auto-fill price when service is selected
+        function autoFillPrice(selectElement, priceInput) {
+            const selectedValue = selectElement.value;
+            if (defaultPrices[selectedValue]) {
+                priceInput.value = defaultPrices[selectedValue];
+                updateTotal();
+            } else {
+                priceInput.value = '';
+                updateTotal();
+            }
+        }
+        
+        // Update live total
+        function updateTotal() {
+            const priceInputs = document.querySelectorAll('.service-price');
+            let total = 0;
+            priceInputs.forEach(input => {
+                const price = parseInt(input.value) || 0;
+                total += price;
+            });
+            
+            const amountPaid = parseInt(document.getElementById('amount_paid').value) || 0;
+            const balance = total - amountPaid;
+            
+            document.getElementById('total-amount').textContent = total.toLocaleString();
+            document.getElementById('balance-amount').textContent = balance.toLocaleString();
+            
+            const balanceSpan = document.getElementById('balance-amount');
+            if (balance > 0) {
+                balanceSpan.style.color = '#D6456F';
+            } else {
+                balanceSpan.style.color = '#4CAF50';
+            }
+        }
+        
+        // Show/hide M-Pesa field
+        function toggleMpesaField() {
+            const paymentMethod = document.getElementById('payment_method').value;
+            const mpesaField = document.getElementById('mpesa-field');
+            mpesaField.style.display = paymentMethod === 'M-Pesa' ? 'block' : 'none';
+        }
+        
+        // Fill client form
+        function fillClientForm(name, phone, email) {
+            document.getElementById('client_name').value = name;
+            document.getElementById('client_phone').value = phone;
+            document.getElementById('search-result').innerHTML = '';
+            
+            fetch(`/api/search?q=${encodeURIComponent(phone)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const client = data[0];
+                        showClientSummary(client);
+                    }
+                });
+        }
+        
+        function showClientSummary(client) {
+            const summaryDiv = document.getElementById('client-summary');
+            const contentDiv = document.getElementById('summary-content');
+            
+            contentDiv.innerHTML = `
+                <div class="summary-row">
+                    <span>📞 ${escapeHtml(client.client_phone)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>📊 Visits: ${client.total_visits || 0}</span>
+                    <span>💰 Spent: KES ${(client.gross_spent || 0).toLocaleString()}</span>
+                </div>
+                <div class="summary-row">
+                    <span>📅 Last: ${client.last_visit || 'Never'}</span>
+                    ${client.category === 'VIP' ? '<span class="vip-badge">⭐ VIP Client</span>' : ''}
+                </div>
+            `;
+            summaryDiv.classList.add('show');
+        }
+        
+        // Search as you type
+        const phoneInput = document.getElementById('client_phone');
+        const searchResult = document.getElementById('search-result');
+        let searchTimeout;
+        
+        phoneInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const phone = this.value;
+            
+            if (phone.length >= 4) {
+                searchTimeout = setTimeout(() => {
+                    fetch(`/api/search?q=${encodeURIComponent(phone)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.length > 0) {
+                                const client = data[0];
+                                searchResult.innerHTML = `
+                                    <a href="#" onclick="fillClientForm('${escapeHtml(client.client_name)}', '${escapeHtml(client.client_phone)}', ''); return false;">
+                                        👤 Existing client: ${escapeHtml(client.client_name)}<br>
+                                        <small>Click to load</small>
+                                    </a>
+                                `;
+                            } else {
+                                searchResult.innerHTML = '';
+                                document.getElementById('client-summary').classList.remove('show');
+                            }
+                        });
+                }, 500);
+            } else {
+                searchResult.innerHTML = '';
+            }
+        });
+        
+        // Form submission with loading state
+        const form = document.getElementById('invoice-form');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        form.addEventListener('submit', function(e) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Generating PDF, please wait...';
+        });
+        
+        // Event listeners
+        document.getElementById('amount_paid').addEventListener('input', updateTotal);
+        document.getElementById('payment_method').addEventListener('change', toggleMpesaField);
+        
+        // Initialize event listeners for existing service rows with duplicate check
+        document.querySelectorAll('.service-select').forEach(select => {
+            const rowId = select.dataset.row;
+            const priceInput = document.querySelector(`.service-price[data-row="${rowId}"]`);
+            
+            select.addEventListener('change', function() {
+                const selectedValue = this.value;
+                
+                if (isServiceDuplicate(this, selectedValue)) {
+                    alert(`Service "${selectedValue}" is already added. Please remove it first or choose a different service.`);
+                    this.value = '';
+                    if (priceInput) priceInput.value = '';
+                    updateTotal();
+                    return;
+                }
+                
+                autoFillPrice(this, priceInput);
+                toggleOtherServiceField(this, rowId);
+                updateTotal();
+            });
+            
+            if (priceInput) {
+                priceInput.addEventListener('input', updateTotal);
+            }
+            // Initialize other field visibility
+            toggleOtherServiceField(select, rowId);
+        });
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize
+        updateTotal();
+        toggleMpesaField();
+    </script>
+</body>
+</html>

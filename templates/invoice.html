@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ invoice_number }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 11px;
+            color: #333333;
+            line-height: 1.4;
+            background: #FFFFFF;
+        }
+        
+        .invoice-container {
+            max-width: 100%;
+        }
+        
+        /* Header Section - Deep Plum Background */
+        .header {
+            background: #4A2B42;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        
+        .business-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .business-tagline {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        /* Invoice Title */
+        .invoice-title {
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .invoice-title h2 {
+            background: #D6456F;
+            color: white;
+            display: inline-block;
+            padding: 6px 25px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        /* Info Grid - FORCED TABLE LAYOUT for PDF stability */
+        .info-table {
+            width: 100%;
+            display: table;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+        
+        .info-table tr {
+            display: table-row;
+        }
+        
+        .info-table td {
+            display: table-cell;
+            width: 33%;
+            vertical-align: top;
+            padding: 10px;
+        }
+        
+        .info-table h4 {
+            color: #4A2B42;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        
+        .info-table p {
+            margin: 3px 0;
+            font-size: 11px;
+        }
+        
+        /* QR Code Section */
+        .qr-section {
+            text-align: center;
+            margin: 10px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .qr-section img {
+            max-width: 70px;
+            height: auto;
+        }
+        
+        .qr-section p {
+            font-size: 9px;
+        }
+        
+        /* Services Table */
+        .services-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        
+        .services-table th {
+            background: #4A2B42;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 11px;
+        }
+        
+        .services-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 11px;
+        }
+        
+        .services-table .total-row {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        /* Payment Section */
+        .payment-summary {
+            margin: 12px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .payment-row {
+            display: table;
+            width: 100%;
+            padding: 5px 0;
+        }
+        
+        .payment-row span:first-child {
+            display: table-cell;
+            text-align: left;
+        }
+        
+        .payment-row span:last-child {
+            display: table-cell;
+            text-align: right;
+        }
+        
+        .payment-total {
+            font-size: 11px;
+            font-weight: bold;
+            color: #D6456F;
+            border-top: 1px solid #D6456F;
+            margin-top: 5px;
+            padding-top: 5px;
+        }
+        
+        /* Invoice Number Highlight */
+        .invoice-number-highlight {
+            color: #D6456F;
+            font-weight: bold;
+        }
+        
+        /* Tax Section */
+        .tax-section {
+            margin: 8px 0;
+            padding: 6px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 9px;
+        }
+        
+        /* Notes Section */
+        .notes {
+            margin: 8px 0;
+            padding: 8px;
+            background: #fff8e7;
+            border-left: 3px solid #ffc107;
+            font-size: 10px;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #ddd;
+            font-size: 9px;
+            color: #666;
+        }
+        
+        .footer a {
+            color: #D6456F;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .social-links {
+            margin-bottom: 5px;
+        }
+        
+        .thank-you {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 12px;
+            font-weight: bold;
+            color: #4A2B42;
+        }
+        
+        .mpesa-code {
+            background: #25D36610;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 9px;
+        }
+        
+        /* Accent Divider */
+        .accent-divider {
+            height: 2px;
+            background: #D6456F;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header - Deep Plum Background -->
+        <div class="header">
+            <div class="business-name">{{ business.name }}</div>
+            <div class="business-tagline">Professional Sisterlocks & Microlocs Services</div>
+            <div class="business-tagline">📍 {{ business.location }} | 📞 {{ business.phone }}</div>
+        </div>
+        
+        <!-- Invoice Title -->
+        <div class="invoice-title">
+            <h2>TAX INVOICE</h2>
+        </div>
+        
+        <!-- Info Grid - Forced table layout (Email removed) -->
+        <table class="info-table">
+            <tr>
+                <td>
+                    <h4>INVOICE DETAILS</h4>
+                    <p>Invoice No: <span class="invoice-number-highlight">{{ invoice_number }}</span></p>
+                    <p>Date: {{ date }}</p>
+                </td>
+                <td>
+                    <h4>CLIENT DETAILS</h4>
+                    <p><strong>{{ client_name }}</strong></p>
+                    <p>📞 {{ client_phone }}</p>
+                </td>
+                <td>
+                    <h4>APPOINTMENT</h4>
+                    <p>📅 {{ appointment_date if appointment_date else "To be scheduled" }}</p>
+                    <p>👩🏾‍🦱 Stylist: {{ stylist_name }}</p>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Accent Divider -->
+        <div class="accent-divider"></div>
+        
+        <!-- QR Code Section -->
+        {% if qr_code_url %}
+        <div class="qr-section">
+            <img src="{{ qr_code_url }}" alt="WhatsApp QR Code">
+            <p>Scan to book your next appointment on WhatsApp</p>
+        </div>
+        {% endif %}
+        
+        <!-- Services Table - Multiple Services -->
+        <table class="services-table">
+            <thead>
+                <tr>
+                    <th>Service Description</th>
+                    <th style="text-align: right;">Amount (KES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services_list %}
+                <tr>
+                    <td><strong>{{ service.name }}</strong></td>
+                    <td style="text-align: right;">{{ "{:,.0f}".format(service.price) }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td style="font-weight: bold;">SUBTOTAL</td>
+                    <td style="text-align: right; font-weight: bold;">KES {{ "{:,.2f}".format(subtotal) }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td style="font-weight: bold;">VAT (16%)</td>
+                    <td style="text-align: right; font-weight: bold;">KES {{ "{:,.2f}".format(vat_amount) }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td style="font-weight: bold;">TOTAL (incl. VAT)</td>
+                    <td style="text-align: right; font-weight: bold;">KES {{ "{:,.0f}".format(total_with_vat) }}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Accent Divider -->
+        <div class="accent-divider"></div>
+        
+        <!-- Payment Summary -->
+        <div class="payment-summary">
+            <div class="payment-row">
+                <span>Total Amount:</span>
+                <span><strong>KES {{ "{:,.0f}".format(total) }}</strong></span>
+            </div>
+            <div class="payment-row">
+                <span>Amount Paid:</span>
+                <span>KES {{ "{:,.0f}".format(amount_paid) }}</span>
+            </div>
+            <div class="payment-row">
+                <span>Payment Method:</span>
+                <span>{{ payment_method if payment_method else "—" }}</span>
+            </div>
+            {% if mpesa_code %}
+            <div class="payment-row">
+                <span>M-Pesa Code:</span>
+                <span><strong>{{ mpesa_code }}</strong></span>
+            </div>
+            {% endif %}
+            <div class="payment-row payment-total">
+                <span>Balance Due:</span>
+                <span>KES {{ "{:,.0f}".format(balance) }}</span>
+            </div>
+        </div>
+        
+        <!-- Tax Info -->
+        <div class="tax-section">
+            <strong>📋 Tax Information:</strong><br>
+            This is a tax invoice for services rendered. VAT (16%) is included in the total amount.
+        </div>
+        
+        <!-- Loyalty Section - REMOVED -->
+        
+        <!-- Notes -->
+        {% if notes %}
+        <div class="notes">
+            <strong>📝 Notes:</strong><br>
+            {{ notes }}
+        </div>
+        {% endif %}
+        
+        <!-- Aftercare -->
+        <div class="notes" style="background: #e8f5e9; border-left-color: #4caf50;">
+            <strong>💆🏾‍♀️ Aftercare Reminder:</strong><br>
+            • Next retie recommended in 4–6 weeks<br>
+            • Keep scalp moisturized regularly<br>
+            • Sleep with a satin scarf or bonnet<br>
+            • Book your next appointment in advance
+        </div>
+        
+        <div class="thank-you">
+            Thank you for choosing {{ business.name }}! ✨
+        </div>
+        
+        <!-- Footer with Clickable Social Links -->
+        <div class="footer">
+            <div class="social-links">
+                <a href="https://www.instagram.com/{{ business.instagram|replace('@', '') }}" target="_blank">📷 Instagram</a> &nbsp;|&nbsp;
+                <a href="https://wa.me/{{ business.whatsapp }}" target="_blank">💬 WhatsApp</a> &nbsp;|&nbsp;
+                <a href="https://joysisterlocks.co.ke" target="_blank">🌐 Website</a>
+            </div>
+            <p>{{ business.name }} | {{ business.location }}</p>
+            <p>This is a computer-generated invoice. No signature required.</p>
+        </div>
+    </div>
+</body>
+</html>

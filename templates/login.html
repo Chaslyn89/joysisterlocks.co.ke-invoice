@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Joy Sisterlocks{% endblock %}
+
+{% block head %}
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 30px;
+        padding: 40px;
+        max-width: 400px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        text-align: center;
+    }
+    
+    .login-card h1 {
+        color: #D6456F;
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    
+    .login-card p {
+        color: #5A4A52;
+        margin-bottom: 30px;
+    }
+    
+    .login-card .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+    
+    .login-card label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #4A2B42;
+        margin-bottom: 8px;
+    }
+    
+    .login-card input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+    
+    .login-card input:focus {
+        outline: none;
+        border-color: #D6456F;
+    }
+    
+    .login-card .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background: #D6456F;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .login-card .submit-btn:hover {
+        background: #b83b5e;
+    }
+    
+    .error {
+        background: #D6456F20;
+        color: #D6456F;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 13px;
+    }
+    
+    .login-footer {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #5A4A52;
+    }
+    
+    /* Override base.html styles for login page */
+    .main-nav {
+        display: none;
+    }
+    
+    .container {
+        display: block;
+        padding: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <h1>🔐 Joy Sisterlocks</h1>
+        <p>Login to access your dashboard</p>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST">
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Enter admin password" required>
+            </div>
+            <button type="submit" class="submit-btn">Login →</button>
+        </form>
+        
+        <div class="login-footer">
+            <p>Secure access to business management</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
