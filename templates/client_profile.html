@@ -37,6 +37,25 @@
             font-size: 32px;
             color: #4A2B42;
             margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .edit-client-btn {
+            background: #4A2B42;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .edit-client-btn:hover {
+            background: #3a1f33;
         }
         
         .profile-contact {
@@ -205,6 +224,23 @@
             background: #b83b5e;
         }
         
+        .delete-client-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 20px;
+        }
+        
+        .delete-client-btn:hover {
+            background: #b91c1c;
+        }
+        
         .allergy-item {
             background: #FFF3E0;
             border-left: 4px solid #FF9800;
@@ -324,10 +360,24 @@
             color: #333;
         }
         
+        .modal-delete {
+            background: #dc2626;
+            color: white;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 30px;
             color: #5A4A52;
+        }
+        
+        .warning-text {
+            color: #dc2626;
+            font-size: 13px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fee2e2;
+            border-radius: 8px;
         }
         
         @media (max-width: 768px) {
@@ -338,6 +388,13 @@
                 display: block;
                 overflow-x: auto;
             }
+            .profile-name {
+                font-size: 24px;
+            }
+            .edit-client-btn, .delete-client-btn {
+                width: 100%;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -345,7 +402,10 @@
     <div class="container">
         <!-- Profile Header -->
         <div class="profile-header">
-            <h1 class="profile-name">👤 {{ profile.client.client_name }}</h1>
+            <div class="profile-name">
+                👤 {{ profile.client.client_name }}
+                <button class="edit-client-btn" onclick="openEditModal()">✏️ Edit Client</button>
+            </div>
             <div class="profile-contact">
                 📞 {{ profile.client.client_phone }}<br>
                 {% if profile.client.client_email %}
@@ -479,9 +539,28 @@
         </div>
         {% endif %}
         
+        <!-- Delete Client Button -->
         <div style="text-align: center;">
+            <button class="delete-client-btn" onclick="confirmDelete()">🗑️ Delete Client</button>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
             <a href="/clients" class="back-btn">← Back to All Clients</a>
             <a href="/" class="back-btn" style="margin-left: 10px;">📄 New Invoice</a>
+        </div>
+    </div>
+    
+    <!-- Edit Client Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Edit Client: {{ profile.client.client_name }}</h3>
+            <input type="text" id="editName" placeholder="Full Name" value="{{ profile.client.client_name }}">
+            <input type="tel" id="editPhone" placeholder="Phone Number" value="{{ profile.client.client_phone }}">
+            <input type="email" id="editEmail" placeholder="Email (optional)" value="{{ profile.client.client_email or '' }}">
+            <div class="modal-buttons">
+                <button class="modal-save" onclick="saveClientEdit()">Save Changes</button>
+                <button class="modal-cancel" onclick="closeModal('editModal')">Cancel</button>
+            </div>
         </div>
     </div>
     
@@ -522,6 +601,15 @@
     </div>
     
     <script>
+        const clientId = {{ profile.client.id }};
+        const clientName = "{{ profile.client.client_name }}";
+        const hasInvoices = {{ profile.services|length }} > 0 ? true : false;
+        const invoiceCount = {{ profile.services|length }};
+        
+        function openEditModal() {
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        
         function openNoteModal() {
             document.getElementById('noteModal').style.display = 'flex';
         }
@@ -534,6 +622,94 @@
             document.getElementById(modalId).style.display = 'none';
         }
         
+        // Save edited client
+        function saveClientEdit() {
+            const newName = document.getElementById('editName').value.trim();
+            const newPhone = document.getElementById('editPhone').value.trim();
+            const newEmail = document.getElementById('editEmail').value.trim();
+            
+            if (!newName) {
+                alert('Client name is required');
+                return;
+            }
+            if (!newPhone) {
+                alert('Phone number is required');
+                return;
+            }
+            
+            fetch(`/api/client/${clientId}/edit`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: newName,
+                    phone: newPhone,
+                    email: newEmail
+                })
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    response.json().then(data => {
+                        alert(data.error || 'Error saving changes');
+                    });
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error saving changes');
+            });
+        }
+        
+        // Delete client with warnings
+        function confirmDelete() {
+            if (hasInvoices) {
+                // Client has invoices - stronger warning
+                const confirmText = prompt(
+                    `⚠️ WARNING ⚠️\n\n` +
+                    `Client "${clientName}" has ${invoiceCount} invoice(s).\n\n` +
+                    `Deleting this client will permanently remove:\n` +
+                    `- All invoice history\n` +
+                    `- All service records\n` +
+                    `- All notes and allergies\n` +
+                    `- All communication logs\n\n` +
+                    `Type "DELETE" to confirm:`
+                );
+                
+                if (confirmText === 'DELETE') {
+                    deleteClient();
+                } else if (confirmText !== null) {
+                    alert('Deletion cancelled. You must type "DELETE" exactly.');
+                }
+            } else {
+                // No invoices - simple confirmation
+                const confirmed = confirm(
+                    `Are you sure you want to delete "${clientName}"?\n\n` +
+                    `This action cannot be undone.`
+                );
+                if (confirmed) {
+                    deleteClient();
+                }
+            }
+        }
+        
+        function deleteClient() {
+            fetch(`/api/client/${clientId}/delete`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'}
+            }).then(response => {
+                if (response.ok) {
+                    alert('Client deleted successfully');
+                    window.location.href = '/clients';
+                } else {
+                    response.json().then(data => {
+                        alert(data.error || 'Error deleting client');
+                    });
+                }
+            }).catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting client');
+            });
+        }
+        
         function saveNote() {
             const note = document.getElementById('noteText').value;
             if (!note.trim()) {
@@ -541,7 +717,7 @@
                 return;
             }
             
-            fetch('/api/client/{{ profile.client.id }}/note', {
+            fetch(`/api/client/${clientId}/note`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({note: note})
@@ -569,7 +745,7 @@
                 return;
             }
             
-            fetch('/api/client/{{ profile.client.id }}/allergy', {
+            fetch(`/api/client/${clientId}/allergy`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(allergy)
