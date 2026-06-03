@@ -6,8 +6,9 @@ from services.client_service import (
     get_client_statistics, search_clients_by_term, get_recent_clients_list,
     get_top_spending_clients, get_at_risk_clients_list, get_complete_client_profile
 )
-from database import update_retention_status, add_client_note, add_allergy, log_communication
+from database import update_retention_status, add_client_note, add_allergy, log_communication, get_db, get_current_date
 from utils.security import login_required
+from utils.formatters import validate_kenyan_phone, format_phone
 
 clients_bp = Blueprint('clients', __name__, url_prefix='/')
 
@@ -97,3 +98,69 @@ def add_allergy_record(client_id):
     data = request.get_json()
     add_allergy(client_id, data.get("type"), data.get("description"), data.get("severity", "Medium"))
     return jsonify({"success": True})
+
+# ============ EDIT & DELETE CLIENT ============
+
+@clients_bp.route("/api/client/<int:client_id>/edit", methods=["PUT"])
+@login_required
+def edit_client(client_id):
+    """Edit client details"""
+    data = request.get_json()
+    
+    new_name = data.get('name', '').strip()
+    new_phone = data.get('phone', '').strip()
+    new_email = data.get('email', '').strip()
+    
+    if not new_name:
+        return jsonify({"error": "Client name is required"}), 400
+    if not new_phone:
+        return jsonify({"error": "Phone number is required"}), 400
+    
+    if not validate_kenyan_phone(new_phone):
+        return jsonify({"error": "Invalid Kenyan phone number"}), 400
+    
+    formatted_phone = format_phone(new_phone)
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Check if phone number already exists for another client
+        cursor.execute('SELECT id FROM clients WHERE client_phone = ? AND id != ?', (formatted_phone, client_id))
+        if cursor.fetchone():
+            return jsonify({"error": "Phone number already used by another client"}), 400
+        
+        cursor.execute('''
+            UPDATE clients 
+            SET client_name = ?, client_phone = ?, client_email = ?, updated_at = ?
+            WHERE id = ?
+        ''', (new_name, formatted_phone, new_email, get_current_date(), client_id))
+        
+        conn.commit()
+        
+        log_communication(client_id, 'Edit', f'Client details updated: {new_name}', 'Joy')
+        
+        return jsonify({"success": True})
+
+
+@clients_bp.route("/api/client/<int:client_id>/delete", methods=["DELETE"])
+@login_required
+def delete_client(client_id):
+    """Delete client and all associated data"""
+    
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Check if client exists
+        cursor.execute('SELECT client_name FROM clients WHERE id = ?', (client_id,))
+        client = cursor.fetchone()
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        # Delete will cascade to service_history, client_health, communications, appointments
+        cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
+        conn.commit()
+        
+        from database import _cache
+        _cache.clear()
+        
+        return jsonify({"success": True})
