@@ -24,26 +24,28 @@ def api_get_expenses():
     conn = get_db()
     cursor = conn.cursor()
     
-    # Build query safely - FIXED: no duplicate AND
-    query = "SELECT * FROM expenses WHERE deleted_at IS NULL"
-    count_query = "SELECT COUNT(*) FROM expenses WHERE deleted_at IS NULL"
+    # Base query parts
+    where_clauses = []
     params = []
     
     if start_date:
-        query += " AND expense_date >= %s"
-        count_query += " AND expense_date >= %s"
+        where_clauses.append("expense_date >= %s")
         params.append(start_date)
     if end_date:
-        query += " AND expense_date <= %s"
-        count_query += " AND expense_date <= %s"
+        where_clauses.append("expense_date <= %s")
         params.append(end_date)
     
+    where_sql = ""
+    if where_clauses:
+        where_sql = " AND " + " AND ".join(where_clauses)
+    
     # Get total count
+    count_query = f"SELECT COUNT(*) FROM expenses WHERE deleted_at IS NULL{where_sql}"
     cursor.execute(count_query, params)
     total = cursor.fetchone()[0]
     
     # Get paginated results
-    query += " ORDER BY expense_date DESC LIMIT %s OFFSET %s"
+    query = f"SELECT * FROM expenses WHERE deleted_at IS NULL{where_sql} ORDER BY expense_date DESC LIMIT %s OFFSET %s"
     params.extend([limit, offset])
     cursor.execute(query, params)
     
