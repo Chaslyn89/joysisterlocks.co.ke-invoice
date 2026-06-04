@@ -1,16 +1,16 @@
 # app.py
 """Main application factory for Joy Sisterlocks Invoice System"""
 
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect, url_for, request, jsonify
 from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
 from config import Config
 from database import init_db
 from blueprints import invoices_bp, clients_bp, expenses_bp
+from auth import verify_password, get_user_by_username, update_user_password
 
-# Import for auth routes (kept here for simplicity, can move to blueprint later)
+# Import for auth routes
 from utils.security import is_rate_limited, record_failed_attempt, clear_login_attempts
 
 def create_app():
@@ -26,8 +26,7 @@ def create_app():
     app.register_blueprint(clients_bp)
     app.register_blueprint(expenses_bp)
     
-    # ============ AUTH ROUTES (keep here for now) ============
-    ADMIN_PASSWORD_HASH = generate_password_hash(Config.ADMIN_PASSWORD)
+    # ============ AUTH ROUTES ============
     
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -37,18 +36,57 @@ def create_app():
             if is_rate_limited(client_ip, Config.MAX_LOGIN_ATTEMPTS, Config.LOGIN_LOCKOUT_TIME):
                 return render_template('login.html', error='Too many attempts. Please wait 15 minutes.')
             
-            password = request.form.get('password')
-            if check_password_hash(ADMIN_PASSWORD_HASH, password):
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            
+            if not username or not password:
+                return render_template('login.html', error='Username and password required')
+            
+            user = get_user_by_username(username)
+            
+            if user and verify_password(password, user['password_hash']):
                 session.permanent = True
                 session['logged_in'] = True
+                session['username'] = user['username']
                 session['login_time'] = datetime.now().isoformat()
                 clear_login_attempts(client_ip)
-                return redirect(url_for('invoices.index'))
+                return redirect(url_for('dashboard'))
             else:
                 record_failed_attempt(client_ip, Config.MAX_LOGIN_ATTEMPTS, Config.LOGIN_LOCKOUT_TIME)
-                return render_template('login.html', error='Invalid password.')
+                return render_template('login.html', error='Invalid username or password')
         
         return render_template('login.html')
+    
+    @app.route('/change-password', methods=['GET', 'POST'])
+    def change_password():
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        
+        if request.method == 'POST':
+            current_password = request.form.get('current_password', '')
+            new_password = request.form.get('new_password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            if not current_password or not new_password:
+                return render_template('change_password.html', error='All fields required')
+            
+            if new_password != confirm_password:
+                return render_template('change_password.html', error='New passwords do not match')
+            
+            if len(new_password) < 6:
+                return render_template('change_password.html', error='Password must be at least 6 characters')
+            
+            user = get_user_by_username(session['username'])
+            
+            if not verify_password(current_password, user['password_hash']):
+                return render_template('change_password.html', error='Current password is incorrect')
+            
+            update_user_password(session['username'], new_password)
+            
+            session.clear()
+            return render_template('change_password.html', success='Password changed successfully! Please login again.')
+        
+        return render_template('change_password.html')
     
     @app.route('/logout')
     def logout():
@@ -56,6 +94,7 @@ def create_app():
         return redirect(url_for('login'))
     
     # ============ DASHBOARD ROUTES ============
+    
     @app.route("/dashboard")
     def dashboard():
         if not session.get('logged_in'):
@@ -104,15 +143,30 @@ def create_app():
         balances = get_outstanding_balances()
         return jsonify([dict(row) for row in balances])
     
+    @app.route("/api/at-risk-clients")
+    def api_at_risk_clients():
+        if not session.get('logged_in'):
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        from database import get_at_risk_clients
+        clients = get_at_risk_clients()
+        return jsonify([dict(row) for row in clients])
+    
+    @app.route("/api/recent-expenses")
+    def api_recent_expenses():
+        if not session.get('logged_in'):
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        from database import get_expenses
+        expenses = get_expenses(limit=10)
+        return jsonify([dict(row) for row in expenses])
+    
     # Initialize database
     with app.app_context():
         init_db()
         print("Database initialized successfully")
     
     return app
-
-# For direct running (python app.py)
-from flask import request, jsonify
 
 app = create_app()
 
