@@ -2,9 +2,10 @@ from flask import Blueprint, render_template, request, jsonify
 from utils.security import login_required
 from database import get_db, return_db, add_expense, soft_delete_expense
 
-expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
+# Create blueprint with no prefix - API routes will be at /api/expenses directly
+expenses_bp = Blueprint('expenses', __name__)
 
-@expenses_bp.route('/')
+@expenses_bp.route('/expenses')
 @login_required
 def expenses_page():
     """Expense management page"""
