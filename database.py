@@ -644,6 +644,24 @@ def get_expenses(limit=50):
     finally:
         return_db(conn)
 
+def get_expenses_by_category():
+    """Get expenses grouped by category (non-deleted only)"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT category, SUM(amount) as total
+            FROM expenses
+            WHERE deleted_at IS NULL
+            GROUP BY category
+            ORDER BY total DESC
+        ''')
+        
+        columns = ['category', 'total']
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        return_db(conn)
+
 def add_client_note(client_id, note):
     """Add a note to client profile"""
     conn = get_db()
