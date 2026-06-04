@@ -161,6 +161,44 @@ def create_app():
         expenses = get_expenses(limit=10)
         return jsonify([dict(row) for row in expenses])
     
+    # ============ DELETE CLIENT ROUTE ============
+    
+    @app.route("/api/client/<int:client_id>", methods=["DELETE"])
+    def delete_client(client_id):
+        if not session.get('logged_in'):
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        from database import get_db, return_db
+        conn = get_db()
+        try:
+            cursor = conn.cursor()
+            
+            # Check if client exists
+            cursor.execute("SELECT id, client_name FROM clients WHERE id = %s", (client_id,))
+            client = cursor.fetchone()
+            if not client:
+                return jsonify({"error": "Client not found"}), 404
+            
+            client_name = client[1]
+            
+            # Delete client (cascade will delete service_history, appointments, etc.)
+            cursor.execute("DELETE FROM clients WHERE id = %s", (client_id,))
+            conn.commit()
+            
+            # Clear cache
+            from database import _cache
+            _cache.clear()
+            
+            # Log the deletion (optional)
+            from database import log_communication
+            log_communication(client_id, 'Client Deleted', f'Client {client_name} was deleted', 'System')
+            
+            return jsonify({"success": True, "message": f"Client {client_name} deleted successfully"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            return_db(conn)
+    
     # Initialize database
     with app.app_context():
         init_db()
