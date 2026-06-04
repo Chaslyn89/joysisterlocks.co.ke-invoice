@@ -734,11 +734,31 @@
             }
         });
         
-        // Form submission with loading state
+        // Form submission with loading state AND amount paid validation
         const form = document.getElementById('invoice-form');
         const submitBtn = document.getElementById('submit-btn');
         
         form.addEventListener('submit', function(e) {
+            // Get amount paid and total
+            const amountPaid = document.getElementById('amount_paid').value;
+            const totalAmountText = document.getElementById('total-amount').textContent;
+            const totalAmount = parseInt(totalAmountText.replace(/,/g, '')) || 0;
+            
+            // Validate amount paid
+            if (!amountPaid || parseFloat(amountPaid) <= 0) {
+                e.preventDefault();
+                alert('❌ Please enter the amount paid by the client.');
+                submitBtn.disabled = false;
+                return false;
+            }
+            
+            if (parseFloat(amountPaid) > totalAmount) {
+                e.preventDefault();
+                alert('❌ Amount paid cannot exceed the total amount of KES ' + totalAmount.toLocaleString());
+                submitBtn.disabled = false;
+                return false;
+            }
+            
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Generating PDF, please wait...';
         });
