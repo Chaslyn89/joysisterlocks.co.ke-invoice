@@ -1,26 +1,16 @@
-# blueprints/expenses/routes.py
-"""Expense routes - management, API endpoints"""
-
 from flask import Blueprint, render_template, request, jsonify
-from datetime import datetime
-from services.expense_service import (
-    create_expense, get_expense_list, delete_expense,
-    get_category_breakdown
-)
-from database import get_db, get_dashboard_stats
 from utils.security import login_required
+from database import get_db, return_db, add_expense, soft_delete_expense
 
-expenses_bp = Blueprint('expenses', __name__, url_prefix='/')
+expenses_bp = Blueprint('expenses', __name__, url_prefix='/expenses')
 
-@expenses_bp.route("/expenses")
+@expenses_bp.route('/')
 @login_required
 def expenses_page():
     """Expense management page"""
-    return render_template("expenses.html")
+    return render_template('expenses.html')
 
-# ============ API ENDPOINTS ============
-
-@expenses_bp.route("/api/expenses")
+@expenses_bp.route('/api/expenses')
 @login_required
 def api_get_expenses():
     """Get expenses with pagination and filters"""
@@ -34,73 +24,95 @@ def api_get_expenses():
     conn = get_db()
     cursor = conn.cursor()
     
+    # Build query safely - FIXED: no duplicate AND
     query = "SELECT * FROM expenses WHERE deleted_at IS NULL"
+    count_query = "SELECT COUNT(*) FROM expenses WHERE deleted_at IS NULL"
     params = []
     
     if start_date:
-        query += " AND expense_date >= ?"
+        query += " AND expense_date >= %s"
+        count_query += " AND expense_date >= %s"
         params.append(start_date)
     if end_date:
-        query += " AND expense_date <= ?"
+        query += " AND expense_date <= %s"
+        count_query += " AND expense_date <= %s"
         params.append(end_date)
     
     # Get total count
-    count_query = query.replace("SELECT *", "SELECT COUNT(*) as total")
     cursor.execute(count_query, params)
-    total = cursor.fetchone()['total']
+    total = cursor.fetchone()[0]
     
     # Get paginated results
-    query += " ORDER BY expense_date DESC LIMIT ? OFFSET ?"
+    query += " ORDER BY expense_date DESC LIMIT %s OFFSET %s"
     params.extend([limit, offset])
     cursor.execute(query, params)
-    expenses = cursor.fetchall()
     
-    conn.close()
+    # Get column names
+    columns = [desc[0] for desc in cursor.description]
+    expenses = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    
+    return_db(conn)
     
     return jsonify({
-        'expenses': [dict(row) for row in expenses],
+        'expenses': expenses,
         'total': total,
         'page': page,
         'limit': limit,
-        'total_pages': (total + limit - 1) // limit if total > 0 else 1
+        'total_pages': (total + limit - 1) // limit
     })
 
-@expenses_bp.route("/api/expense", methods=["POST"])
+@expenses_bp.route('/api/expense', methods=['POST'])
 @login_required
 def add_expense_record():
     """Add a new expense"""
     data = request.get_json()
-    amount = data.get('amount', 0)
+    category = data.get('category')
+    amount = data.get('amount')
+    description = data.get('description', '')
+    expense_date = data.get('date')
     
-    success, error = create_expense(
-        data.get('category'),
-        amount,
-        data.get('description'),
-        data.get('date', datetime.now().strftime('%Y-%m-%d'))
-    )
+    if not category or not amount or not expense_date:
+        return jsonify({"error": "Category, amount, and date are required"}), 400
     
-    if success:
-        return jsonify({"success": True})
-    return jsonify({"error": error}), 400
-
-@expenses_bp.route("/api/expense/<int:expense_id>", methods=["DELETE"])
-@login_required
-def api_delete_expense(expense_id):
-    """Soft delete an expense"""
-    delete_expense(expense_id)
+    if amount <= 0:
+        return jsonify({"error": "Invalid amount"}), 400
+    
+    add_expense(category, amount, description, expense_date)
+    
     return jsonify({"success": True})
 
-@expenses_bp.route("/api/expense-categories")
+@expenses_bp.route('/api/expense/<int:expense_id>', methods=['DELETE'])
 @login_required
-def api_expense_categories():
-    """Get expenses grouped by category"""
-    categories = get_category_breakdown()
-    return jsonify([dict(row) for row in categories])
+def delete_expense(expense_id):
+    """Soft delete an expense"""
+    soft_delete_expense(expense_id)
+    return jsonify({"success": True})
 
-@expenses_bp.route("/api/revenue-summary")
+@expenses_bp.route('/api/expense-categories')
 @login_required
-def api_revenue_summary():
-    """Get revenue vs expenses for a date range"""
+def get_expense_categories():
+    """Get expense categories with totals"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT category, SUM(amount) as total
+            FROM expenses
+            WHERE deleted_at IS NULL
+            GROUP BY category
+            ORDER BY total DESC
+        ''')
+        
+        columns = ['category', 'total']
+        categories = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return jsonify(categories)
+    finally:
+        return_db(conn)
+
+@expenses_bp.route('/api/revenue-summary')
+@login_required
+def get_revenue_summary():
+    """Get revenue summary for a date range"""
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
@@ -108,32 +120,26 @@ def api_revenue_summary():
         return jsonify({"error": "Missing date range"}), 400
     
     conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT COALESCE(SUM(amount_paid), 0) as total_revenue 
-        FROM service_history 
-        WHERE service_date BETWEEN ? AND ?
-    ''', (start_date, end_date))
-    revenue = cursor.fetchone()['total_revenue'] or 0
-    
-    cursor.execute('''
-        SELECT COALESCE(SUM(amount), 0) as total_expenses 
-        FROM expenses 
-        WHERE expense_date BETWEEN ? AND ? AND deleted_at IS NULL
-    ''', (start_date, end_date))
-    expenses = cursor.fetchone()['total_expenses'] or 0
-    
-    conn.close()
-    
-    return jsonify({
-        'revenue': revenue,
-        'expenses': expenses
-    })
-
-@expenses_bp.route("/api/recent-expenses")
-@login_required
-def api_recent_expenses():
-    """Get recent expenses for dashboard"""
-    expenses = get_expense_list(limit=10)
-    return jsonify([dict(row) for row in expenses])
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT COALESCE(SUM(amount_paid), 0) as total_revenue 
+            FROM service_history 
+            WHERE service_date BETWEEN %s AND %s
+        ''', (start_date, end_date))
+        revenue = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT COALESCE(SUM(amount), 0) as total_expenses 
+            FROM expenses 
+            WHERE expense_date BETWEEN %s AND %s AND deleted_at IS NULL
+        ''', (start_date, end_date))
+        expenses = cursor.fetchone()[0]
+        
+        return jsonify({
+            'revenue': revenue,
+            'expenses': expenses
+        })
+    finally:
+        return_db(conn)
