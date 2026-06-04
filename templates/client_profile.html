@@ -659,10 +659,9 @@
             });
         }
         
-        // Delete client with warnings
+        // Delete client with warnings - FIXED ENDPOINT
         function confirmDelete() {
             if (hasInvoices) {
-                // Client has invoices - stronger warning
                 const confirmText = prompt(
                     `⚠️ WARNING ⚠️\n\n` +
                     `Client "${clientName}" has ${invoiceCount} invoice(s).\n\n` +
@@ -680,7 +679,6 @@
                     alert('Deletion cancelled. You must type "DELETE" exactly.');
                 }
             } else {
-                // No invoices - simple confirmation
                 const confirmed = confirm(
                     `Are you sure you want to delete "${clientName}"?\n\n` +
                     `This action cannot be undone.`
@@ -692,7 +690,7 @@
         }
         
         function deleteClient() {
-            fetch(`/api/client/${clientId}/delete`, {
+            fetch(`/api/client/${clientId}`, {
                 method: 'DELETE',
                 headers: {'Content-Type': 'application/json'}
             }).then(response => {
