@@ -18,8 +18,8 @@ def init_db_pool():
         raise ValueError("DATABASE_URL environment variable not set")
     
     db_pool = SimpleConnectionPool(
-        minconn=1,
-        maxconn=10,
+        minconn=2,
+        maxconn=20,
         dsn=database_url
     )
     return db_pool
