@@ -662,6 +662,36 @@ def get_expenses_by_category():
     finally:
         return_db(conn)
 
+def get_profit_summary():
+    """Get profit summary by month"""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT 
+                TO_CHAR(service_date, 'YYYY-MM') as month,
+                SUM(amount) as revenue,
+                COALESCE((
+                    SELECT SUM(amount) FROM expenses 
+                    WHERE TO_CHAR(expense_date, 'YYYY-MM') = TO_CHAR(service_history.service_date, 'YYYY-MM') 
+                    AND deleted_at IS NULL
+                ), 0) as expenses,
+                SUM(amount) - COALESCE((
+                    SELECT SUM(amount) FROM expenses 
+                    WHERE TO_CHAR(expense_date, 'YYYY-MM') = TO_CHAR(service_history.service_date, 'YYYY-MM') 
+                    AND deleted_at IS NULL
+                ), 0) as profit
+            FROM service_history
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT 12
+        ''')
+        
+        columns = ['month', 'revenue', 'expenses', 'profit']
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        return_db(conn)
+
 def add_client_note(client_id, note):
     """Add a note to client profile"""
     conn = get_db()
