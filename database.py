@@ -201,6 +201,32 @@ def init_db():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_expense_date ON expenses(expense_date)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_expense_deleted ON expenses(deleted_at)')
         
+        # Users table for authentication
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        ''')
+        
+        # Insert default user (joy) if not exists
+        cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'joy'")
+        if cursor.fetchone()[0] == 0:
+            import hashlib
+            import secrets
+            salt = secrets.token_hex(16)
+            default_password = 'JoyAdmin2026'
+            hash_obj = hashlib.sha256((default_password + salt).encode())
+            default_password_hash = f"{salt}:{hash_obj.hexdigest()}"
+            cursor.execute('''
+                INSERT INTO users (username, password_hash, email, created_at)
+                VALUES (%s, %s, %s, %s)
+            ''', ('joy', default_password_hash, 'joysisterlocks@gmail.com', get_current_date()))
+        
         conn.commit()
     finally:
         return_db(conn)
